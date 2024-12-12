@@ -18,6 +18,11 @@ option("board")
 
 compartment("js")
     add_files("js.cc")
+    
+compartment("ex")
+   add_files("exec.cc")
+
+compartment("secret")
     add_files("secret.cc")
 
 -- Firmware image for the example.
@@ -25,6 +30,8 @@ firmware("javascript")
     add_deps("crt", "freestanding", "string", "microvium", "atomic_fixed")
     add_deps("js")
     add_deps("debug")
+    add_deps("secret")
+    add_deps("ex")
     on_load(function(target)
         target:values_set("board", "$(board)")
         target:values_set("threads", {

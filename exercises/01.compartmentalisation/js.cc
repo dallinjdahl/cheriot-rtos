@@ -10,10 +10,13 @@
 #include <riscvreg.h>
 #include <type_traits>
 #include <vector>
+#include "exec.h"
 
 /// Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<true, "JavaScript compartment">;
 using CHERI::Capability;
+
+
 
 /// Thread entry point.
 void __cheri_compartment("js") run()
@@ -67,7 +70,8 @@ void __cheri_compartment("js") run()
 			{
 				break;
 			}
-			Debug::Assert(c == ',', "Expected comma or close brace, read {}", c);
+			Debug::Assert(
+			  c == ',', "Expected comma or close brace, read {}", c);
 		}
 
 		Debug::log("Read {} bytes of bytecode", bytecode.size());
@@ -78,47 +82,7 @@ void __cheri_compartment("js") run()
 		// We've now read the bytecode into a buffer.  Spin up the JavaScript
 		// VM to execute it.
 		////////////////////////////////////////////////////////////////////////
-
-		// Allocate the space for the VM capability registers on the stack and
-		// record its location.
-		// **Note**: This must be on the stack and in same compartment as the
-		// JavaScript interpreter, so that the callbacks can re-derive it from
-		// csp.
-		AttackerRegisterState state;
-		attackerRegisterStateAddress = Capability{&state}.address();
-
-		mvm_TeError                         err;
-		std::unique_ptr<mvm_VM, MVMDeleter> vm;
-		// Create a Microvium VM from the bytecode.
-		{
-			mvm_VM *rawVm;
-			err = mvm_restore(
-			  &rawVm,            /* Out pointer to the VM */
-			  bytecode.data(),   /* Bytecode data */
-			  bytecode.size(),   /* Bytecode length */
-			  MALLOC_CAPABILITY, /* Capability used to allocate memory */
-			  ::resolve_import); /* Callback used to resolve FFI imports */
-			// If this is not valid bytecode, give up.
-			Debug::Assert(
-			  err == MVM_E_SUCCESS, "Failed to parse bytecode: {}", err);
-			vm.reset(rawVm);
-		}
-
-		// Get a handle to the JavaScript `run` function.
-		mvm_Value run;
-		err = mvm_resolveExports(vm.get(), &ExportRun, &run, 1);
-		if (err != MVM_E_SUCCESS)
-		{
-			Debug::log("Failed to get run function: {}", err);
-		}
-		else
-		{
-			// Call the function:
-			err = mvm_call(vm.get(), run, nullptr, nullptr, 0);
-			if (err != MVM_E_SUCCESS)
-			{
-				Debug::log("Failed to call run function: {}", err);
-			}
-		}
+		execute(bytecode);
 	}
 }
+

@@ -284,7 +284,7 @@ rule("firmware")
 		local directory = path.directory(firmware)
 		firmware = path.filename(firmware)
 		local run = function(simulator)
-			os.execv(simulator, { firmware }, { curdir = directory })
+			os.execv(simulator, { "--trace=exception", firmware }, { curdir = directory })
 		end
 		-- Try executing the simulator from the sdk directory, if it's there.
 		local tools_directory = config.get("sdk")
